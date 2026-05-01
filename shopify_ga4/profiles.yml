@@ -1,0 +1,12 @@
+shopify_ga4:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      threads: 16
+      database: ga4-shopify-494622
+      schema: shopify
+      method: service-account
+      keyfile: C:\Users\USER\Documents\GitHub\ga4-shopify-494622-ac2aaed63305.json
+      location: us
+      dataproc_batch: null

@@ -1,0 +1,11 @@
+[project]
+name = "ga4-shopify"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "google-cloud-bigquery>=3.41.0",
+    "load-dotenv>=0.1.0",
+    "requests>=2.33.1",
+]

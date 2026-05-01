@@ -1,0 +1,24 @@
+name: shopify_ga4
+
+profile: shopify_ga4
+
+seed-paths: ["seeds"]
+model-paths: ["models"]
+macro-paths: ["macros"]
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+seeds:
+  # Builds seeds into '<your_schema_name>_raw'
+  shopify_ga4:
+    +schema: raw
+
+models:
+  shopify_ga4:
+    +static_analysis: strict
+    # Materialize staging models as views, and marts as tables
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
