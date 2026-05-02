@@ -1,32 +1,96 @@
-# GA4 + Shopify Analytics System
+# Shopify + GA4: Full-Funnel Growth & Profitability Engine
 
-This project is an analytics system for combining Shopify commerce data with GA4 user behavior data. The business goal is to provide visibility across the full customer journey:
+This project combines Shopify commerce data with GA4 behavioral data to analyze the full customer journey:
 
 ```text
-user behavior -> conversion -> revenue -> profitability
+traffic -> behavior -> conversion -> revenue -> profit -> lifetime value
 ```
 
-The system is intended to help merchants understand which users, channels, campaigns, products, and journeys drive revenue and profit.
+The goal is to build an analytics system that helps a merchant understand not only what users do before they buy, but also whether those users, products, and acquisition channels are profitable over time.
 
-## Objectives
+This is also a learning project. The focus is not only to produce dashboards, but to understand how raw ecommerce and behavioral data becomes trustworthy analytics.
 
-- Track user behavior from GA4 events and sessions.
-- Connect behavioral data to Shopify conversions and orders.
-- Model revenue, refunds, discounts, product costs, and profitability.
-- Provide analytics-ready tables for reporting and decision making.
-- Embed analytics inside a Shopify app experience.
-- Orchestrate ingestion and processing reliably.
+## Core Objective
 
-## Business Requirements
+Provide visibility into:
 
-The system should answer questions such as:
+- Full-funnel user behavior from GA4.
+- Shopify conversion and revenue performance.
+- Product, order, and customer profitability.
+- CAC vs LTV by channel, campaign, cohort, and customer segment.
+- Gaps between GA4 purchase tracking and Shopify order reality.
 
-- Which channels and campaigns drive the most revenue?
-- Which user journeys lead to conversion?
-- Which products generate the best gross margin?
+## Business Questions
+
+The system should help answer:
+
+- Which channels and campaigns bring users who actually convert?
 - Where do users drop off before purchase?
-- How do Shopify revenue numbers compare with GA4 purchase events?
-- Which customers, products, and cohorts are most profitable?
+- Which products drive revenue, margin, and repeat purchases?
+- How much does it cost to acquire a customer?
+- How much is a customer worth over time?
+- Is CAC lower than LTV for each channel or campaign?
+- Which cohorts become profitable fastest?
+- Do GA4 purchase events match Shopify orders?
+
+## Current Data Understanding
+
+### GA4
+
+GA4 BigQuery export stores behavioral data as daily event tables:
+
+```text
+analytics_XXXXXXXXX.events_YYYYMMDD
+```
+
+Each table represents one exported day of GA4 events.
+
+Each row represents one event, such as:
+
+- `page_view`
+- `session_start`
+- `view_item`
+- `add_to_cart`
+- `begin_checkout`
+- `purchase`
+
+Important GA4 fields include:
+
+- `event_name`: the action that happened.
+- `event_timestamp`: when the event happened.
+- `event_date`: the exported event date.
+- `user_pseudo_id`: GA4 anonymous user identifier.
+- `event_params`: nested key-value parameters.
+- `items`: nested ecommerce item data.
+
+Important event parameters to extract during staging:
+
+- `ga_session_id`
+- `ga_session_number`
+- `page_location`
+- `page_title`
+- `source`
+- `medium`
+- `campaign`
+- `transaction_id`
+- `value`
+- `currency`
+
+The early modeling goal is to turn GA4's nested event export into clean staging models for events, sessions, ecommerce actions, and purchases.
+
+### Shopify
+
+Shopify is the source of truth for commerce outcomes:
+
+- Orders
+- Customers
+- Products
+- Line items
+- Discounts
+- Refunds
+- Revenue
+
+Shopify data is ingested into BigQuery as raw append-only records, with incremental progress tracked by a `pipeline_state` table.
 
 ## Functional Requirements
 
@@ -38,60 +102,68 @@ Ingest data from:
   - Orders
   - Products
   - Customers
-  - Future: refunds, fulfillments, inventory, transactions, cost data
-- GA4 BigQuery export or GA4 Data API
-  - Events
-  - Sessions
-  - Traffic source data
-  - Purchase events
-
-Current Shopify ingestion loads raw records into BigQuery append-only tables and tracks incremental progress with a `pipeline_state` table.
+  - Future: refunds, transactions, fulfillments, inventory, product costs
+- GA4 BigQuery export
+  - Daily event tables
+  - Event parameters
+  - Ecommerce events
+  - Item arrays
 
 ### Data Modeling
 
-Create modeled tables for analytics, such as:
+Recommended layers:
 
-- `dim_customers`
-- `dim_products`
-- `fact_orders`
-- `fact_order_lines`
-- `fact_ga4_events`
-- `fact_sessions`
-- `fact_attribution`
-- `fact_profitability`
+- `raw`: unmodified source data.
+- `staging`: cleaned, typed, source-specific models.
+- `intermediate`: joins and business logic.
+- `marts`: analytics-ready tables for dashboards and app views.
 
-Recommended modeling layers:
+Suggested models:
 
-- `raw`: unmodified API payloads
-- `staging`: cleaned and typed source-specific tables
-- `mart`: business-ready reporting tables
+- `stg_ga4__events`
+- `stg_ga4__event_params`
+- `stg_ga4__sessions`
+- `stg_ga4__items`
+- `stg_ga4__purchases`
+- `stg_shopify__orders`
+- `stg_shopify__order_lines`
+- `stg_shopify__customers`
+- `stg_shopify__products`
+- `int_order_attribution`
+- `fct_funnel`
+- `fct_orders`
+- `fct_profitability`
+- `fct_customer_ltv`
+- `fct_cac_vs_ltv`
 
 ### Data Processing
 
-Transform raw Shopify and GA4 data into consistent analytics tables.
-
 Processing should handle:
 
-- Deduplication
-- Incremental updates
-- Late-arriving data
-- Refund and cancellation adjustments
-- Currency normalization
-- Order and line-item flattening
-- Identity stitching between GA4 users and Shopify customers/orders
+- GA4 daily sharded tables.
+- Nested GA4 event parameters.
+- Nested GA4 item arrays.
+- Shopify raw JSON payload parsing.
+- Deduplication.
+- Incremental updates.
+- Late-arriving GA4 data.
+- Refunds and cancellations.
+- Revenue and margin calculations.
+- Identity matching between GA4 users, sessions, and Shopify orders.
 
 ### Analytics
 
 The analytics layer should support:
 
-- Funnel analysis
-- Conversion rate analysis
-- Revenue reporting
-- Campaign attribution
-- Product performance
-- Customer cohort analysis
-- Profitability and margin reporting
-- GA4 vs Shopify reconciliation
+- Full-funnel analysis.
+- Conversion rate analysis.
+- Revenue reporting.
+- Product performance.
+- Campaign attribution.
+- CAC vs LTV analysis.
+- Cohort analysis.
+- Profitability and gross margin reporting.
+- GA4 vs Shopify purchase reconciliation.
 
 ### Shopify App Embedding
 
@@ -99,11 +171,12 @@ The analytics experience should eventually be embedded into a Shopify app.
 
 The embedded app should provide:
 
-- Merchant-facing dashboards
-- Filters by date, channel, campaign, product, and customer cohort
-- Revenue and profitability summaries
-- Conversion and funnel views
-- Data freshness/status indicators
+- Funnel dashboard.
+- Revenue and profit dashboard.
+- CAC vs LTV dashboard.
+- Product performance dashboard.
+- Customer cohort views.
+- Data freshness and pipeline status.
 
 ### Orchestration
 
@@ -111,40 +184,40 @@ Pipelines should be scheduled and monitored.
 
 Recommended orchestration responsibilities:
 
-- Run Shopify ingestion
-- Run GA4 ingestion or sync validation
-- Run transformation jobs
-- Update reporting tables
-- Track pipeline state
-- Alert on failures
-- Monitor data freshness
+- Run Shopify ingestion.
+- Validate GA4 export freshness.
+- Run dbt staging models.
+- Run dbt marts.
+- Track pipeline state.
+- Log row counts and failures.
+- Alert on missing or stale data.
 
 ## Non-Functional Requirements
 
 ### Performance
 
-- Use incremental ingestion where possible.
-- Partition large BigQuery tables by event/order date.
-- Cluster high-volume tables by common filter keys such as `shop_domain`, `customer_id`, `order_id`, or `event_name`.
-- Avoid scanning raw JSON tables directly for dashboards.
-- Build reporting marts for repeated dashboard queries.
+- Use incremental processing where possible.
+- Partition large BigQuery tables by date.
+- Cluster large tables by common filters such as `event_name`, `user_pseudo_id`, `order_id`, or `customer_id`.
+- Avoid running dashboards directly on raw nested GA4 tables.
+- Build marts for repeated reporting queries.
 
 ### Data Consistency
 
-- Maintain one source of truth for Shopify orders and revenue.
-- Reconcile GA4 purchase events against Shopify orders.
+- Treat Shopify as the source of truth for orders and revenue.
+- Treat GA4 as the source of truth for behavioral events.
+- Reconcile GA4 purchases with Shopify orders.
 - Use deterministic keys for deduplication.
-- Track pipeline checkpoints in BigQuery.
-- Keep raw source payloads for auditability.
+- Keep raw payloads for auditability.
 
 ### Reliability
 
-- Make ingestion jobs idempotent where possible.
-- Log pipeline start/end times, row counts, and checkpoints.
-- Fail loudly on API or BigQuery errors.
+- Make ingestion idempotent where possible.
+- Track incremental checkpoints.
+- Log pipeline row counts and checkpoints.
 - Add retries for transient API failures.
-- Monitor pipeline freshness and missing data.
-- Protect secrets with environment variables and never commit `.env`.
+- Monitor data freshness.
+- Protect credentials with environment variables.
 
 ## Current Project Structure
 
@@ -154,7 +227,14 @@ Recommended orchestration responsibilities:
 |   |-- ingest_data.py              # Shopify -> BigQuery raw ingestion
 |   |-- run_shopify_ingestion.py    # Entrypoint for Shopify ingestion
 |   |-- shopify_client.py           # Shopify API client helpers
-|   `-- test.py                     # GraphQL/API exploration script
+|   `-- test.py                     # API exploration script
+|-- shopify_ga4/
+|   |-- dbt_project.yml
+|   |-- profiles.yml
+|   |-- packages.yml
+|   `-- models/
+|       `-- staging/
+|           `-- __sources.yml
 |-- main.py
 |-- pyproject.toml
 |-- uv.lock
@@ -202,38 +282,106 @@ The ingestion currently loads:
 - Products into `raw_shopify_products`
 - Customers into `raw_shopify_customers`
 
-## Recommended Next Steps
+## Learning Roadmap
 
-Before moving further into dashboards or the Shopify embedded app, prioritize these foundations:
+### Step 1: Profile Raw GA4 Data
 
-1. Add source-specific raw table constraints and deduplication strategy.
-2. Create staging models for Shopify orders, order lines, products, and customers.
-3. Create GA4 staging models for events, sessions, users, and purchases.
-4. Build a reconciliation table comparing Shopify orders to GA4 purchases.
-5. Define attribution rules for connecting sessions/campaigns to orders.
-6. Add profitability inputs such as product cost, shipping cost, discounts, refunds, and transaction fees.
-7. Add orchestration with scheduled runs, logging, retries, and freshness checks.
-8. Add tests for timestamp parsing, checkpoint behavior, deduplication, and model logic.
+Understand what events and parameters exist before modeling.
 
-## Suggested Analytics Marts
+Questions to answer:
 
-### Revenue Mart
+- Which event names exist?
+- Which events are ecommerce-related?
+- Which parameters exist on each event?
+- Is `transaction_id` populated on purchase events?
+- Does GA4 `transaction_id` match Shopify order data?
 
-Tracks order-level and line-item revenue.
+### Step 2: Build GA4 Staging Models
+
+Start simple:
+
+1. `stg_ga4__events`: one row per event.
+2. `stg_ga4__event_params`: one row per event parameter.
+3. `stg_ga4__sessions`: one row per user session.
+4. `stg_ga4__items`: one row per ecommerce item event.
+5. `stg_ga4__purchases`: one row per GA4 purchase event.
+
+### Step 3: Build Shopify Staging Models
+
+Create clean Shopify models:
+
+1. `stg_shopify__orders`
+2. `stg_shopify__order_lines`
+3. `stg_shopify__customers`
+4. `stg_shopify__products`
+
+### Step 4: Reconcile GA4 Purchases With Shopify Orders
+
+Compare:
+
+- GA4 purchase count vs Shopify order count.
+- GA4 purchase revenue vs Shopify order revenue.
+- GA4 `transaction_id` vs Shopify order identifiers.
+
+This step is important before attribution, CAC, or LTV.
+
+### Step 5: Build Full-Funnel Model
+
+Create a model that counts users and sessions through the funnel:
+
+```text
+session_start -> view_item -> add_to_cart -> begin_checkout -> purchase
+```
 
 Key metrics:
 
-- Gross sales
-- Discounts
-- Net sales
-- Taxes
-- Shipping
-- Refunds
-- Total revenue
+- Sessions
+- Product views
+- Add to carts
+- Checkouts
+- Purchases
+- Conversion rate
+- Revenue per session
 
-### Conversion Mart
+### Step 6: Build Profitability Model
 
-Connects GA4 user/session behavior to Shopify purchases.
+Start with order-level profitability:
+
+```text
+net revenue - product cost - shipping cost - payment fees - refunds = gross profit
+```
+
+Then expand to:
+
+- Product profitability.
+- Customer profitability.
+- Channel profitability.
+- Campaign profitability.
+
+### Step 7: Build CAC vs LTV Model
+
+CAC requires acquisition cost data. This may come later from ad platforms or manual uploads.
+
+Start with:
+
+- Customer first order date.
+- Customer total revenue.
+- Customer total gross profit.
+- Customer repeat purchases.
+- Customer lifetime value.
+
+Then compare LTV against CAC by:
+
+- Channel.
+- Campaign.
+- Cohort.
+- Customer segment.
+
+## Suggested Analytics Marts
+
+### Full-Funnel Mart
+
+Tracks user movement from session to purchase.
 
 Key metrics:
 
@@ -247,18 +395,33 @@ Key metrics:
 
 ### Profitability Mart
 
-Tracks profit by order, product, customer, and channel.
+Tracks profit by order, product, customer, channel, and campaign.
 
 Key metrics:
 
+- Gross sales
+- Discounts
+- Refunds
 - Net revenue
 - Product cost
 - Shipping cost
 - Payment fees
-- Refunds
 - Gross profit
 - Gross margin
 
+### CAC vs LTV Mart
+
+Compares acquisition cost against customer value.
+
+Key metrics:
+
+- CAC
+- First purchase revenue
+- Customer lifetime revenue
+- Customer lifetime gross profit
+- Payback period
+- LTV:CAC ratio
+
 ## Notes
 
-This project is currently in the early ingestion and modeling stage. The most important design choice is to keep raw source data immutable, then build clean staging and business marts on top. That gives the system auditability while keeping dashboards fast and consistent.
+The project should move in small, understandable steps. First understand the raw GA4 event structure, then build staging models, then join GA4 behavior to Shopify orders, then layer profitability and CAC vs LTV on top.
