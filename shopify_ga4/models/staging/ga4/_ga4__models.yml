@@ -1,0 +1,197 @@
+version: 2
+
+models:
+  - name: stg_ga4__events
+    description: >
+      Cleaned GA4 event staging model. Each row represents one GA4 event from
+      the daily exported events tables, with commonly used event parameters
+      extracted into columns.
+    columns:
+      - name: event_key
+        description: Unique-ish event identifier built from user, event timestamp, and event name.
+        tests:
+          - not_null
+          - unique:
+              config:
+                severity: warn
+
+      - name: event_date
+        description: Calendar date of the GA4 event.
+        tests:
+          - not_null
+
+      - name: event_timestamp
+        description: Timestamp of the GA4 event converted from microseconds.
+        tests:
+          - not_null
+
+      - name: event_name
+        description: Name of the GA4 event, such as page_view, add_to_cart, or purchase.
+        tests:
+          - not_null
+
+      - name: user_pseudo_id
+        description: Anonymous GA4 user identifier.
+        tests:
+          - not_null
+
+      - name: ga_session_id
+        description: GA4 session identifier extracted from event_params.
+
+      - name: ga_session_number
+        description: GA4 session number extracted from event_params.
+
+      - name: page_location
+        description: Page URL associated with the event, when available.
+
+      - name: page_title
+        description: Page title associated with the event, when available.
+
+      - name: source
+        description: Traffic source extracted from event_params, when available.
+
+      - name: medium
+        description: Traffic medium extracted from event_params, when available.
+
+      - name: campaign
+        description: Campaign value extracted from event_params, when available.
+
+      - name: currency
+        description: Event currency, usually populated for ecommerce events.
+
+      - name: transaction_id
+        description: Ecommerce transaction identifier, usually populated on purchase events.
+
+      - name: purchase_revenue
+        description: Purchase revenue from the GA4 ecommerce record.
+
+      - name: source_table_suffix
+        description: Date suffix of the GA4 daily export table used as the source.
+        tests:
+          - not_null
+
+  - name: stg_ga4__sessions
+    description: >
+      Session-level GA4 staging model. Each row represents one session based on
+      user_pseudo_id and ga_session_id, with funnel event counts summarized at
+      the session level.
+    columns:
+      - name: session_key
+        description: Session identifier built from user_pseudo_id and ga_session_id.
+        tests:
+          - not_null
+          - unique
+
+      - name: user_pseudo_id
+        description: Anonymous GA4 user identifier.
+        tests:
+          - not_null
+
+      - name: ga_session_id
+        description: GA4 session identifier.
+        tests:
+          - not_null
+
+      - name: session_start_at
+        description: Timestamp of the first event in the session.
+        tests:
+          - not_null
+
+      - name: session_end_at
+        description: Timestamp of the last event in the session.
+        tests:
+          - not_null
+
+      - name: event_count
+        description: Total number of events in the session.
+        tests:
+          - not_null
+
+      - name: page_view_count
+        description: Number of page_view events in the session.
+
+      - name: view_item_count
+        description: Number of view_item events in the session.
+
+      - name: add_to_cart_count
+        description: Number of add_to_cart events in the session.
+
+      - name: begin_checkout_count
+        description: Number of begin_checkout events in the session.
+
+      - name: purchase_count
+        description: Number of purchase events in the session.
+
+      - name: source
+        description: Representative traffic source for the session.
+
+      - name: medium
+        description: Representative traffic medium for the session.
+
+      - name: campaign
+        description: Representative campaign for the session.
+
+  - name: stg_ga4__purchases
+    description: >
+      Purchase-level GA4 staging model. Each row represents a GA4 purchase event
+      and is used to reconcile GA4 ecommerce tracking with Shopify orders.
+    columns:
+      - name: event_key
+        description: Event key inherited from stg_ga4__events.
+        tests:
+          - not_null
+          - unique
+
+      - name: event_date
+        description: Calendar date of the purchase event.
+        tests:
+          - not_null
+
+      - name: event_timestamp
+        description: Timestamp of the purchase event.
+        tests:
+          - not_null
+
+      - name: user_pseudo_id
+        description: Anonymous GA4 user identifier associated with the purchase.
+        tests:
+          - not_null
+
+      - name: session_key
+        description: Session key associated with the purchase event.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: ga_session_id
+        description: GA4 session identifier associated with the purchase event.
+
+      - name: transaction_id
+        description: >
+          GA4 ecommerce transaction identifier. This should usually map to a
+          Shopify order identifier, but current raw data includes some purchase
+          events without transaction_id.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: purchase_revenue
+        description: Purchase revenue reported by GA4.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: currency
+        description: Currency for the purchase event.
+
+      - name: source
+        description: Traffic source associated with the purchase event.
+
+      - name: medium
+        description: Traffic medium associated with the purchase event.
+
+      - name: campaign
+        description: Campaign associated with the purchase event.

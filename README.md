@@ -10,7 +10,11 @@ The goal is to build an analytics system that helps a merchant understand not on
 
 This is also a learning project. The focus is not only to produce dashboards, but to understand how raw ecommerce and behavioral data becomes trustworthy analytics.
 
-## Core Objective
+## Objective
+
+The objective of this project is to build a system that allows end-users to track Shopify store profitability and perform full-funnel, attribution, CAC, and LTV analysis using Shopify and GA4 data.
+
+## Core Objectives
 
 Provide visibility into:
 

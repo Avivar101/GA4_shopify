@@ -1,0 +1,252 @@
+version: 2
+
+models:
+  - name: stg_shopify__orders
+    description: >
+      Cleaned Shopify order staging model. Each row represents the latest raw
+      version of a Shopify order based on shop_domain and order_id.
+    columns:
+      - name: shop_domain
+        description: Shopify store domain the order belongs to.
+        tests:
+          - not_null
+
+      - name: order_id
+        description: Unique Shopify order ID.
+        tests:
+          - not_null
+          - unique
+
+      - name: order_name
+        description: Merchant-facing Shopify order name, such as #1001.
+
+      - name: order_number
+        description: Numeric Shopify order number.
+
+      - name: customer_id
+        description: Shopify customer ID associated with the order, when available.
+
+      - name: created_at
+        description: Timestamp when the order was created in Shopify.
+        tests:
+          - not_null
+
+      - name: processed_at
+        description: Timestamp when the order was processed in Shopify.
+
+      - name: updated_at
+        description: Timestamp when the order was last updated in Shopify.
+        tests:
+          - not_null
+
+      - name: cancelled_at
+        description: Timestamp when the order was cancelled, if applicable.
+
+      - name: financial_status
+        description: Shopify financial status for the order.
+
+      - name: fulfillment_status
+        description: Shopify fulfillment status for the order.
+
+      - name: currency
+        description: Order currency.
+        tests:
+          - not_null
+
+      - name: subtotal_price
+        description: Order subtotal before taxes and shipping.
+
+      - name: total_tax
+        description: Total tax amount on the order.
+
+      - name: total_discounts
+        description: Total discounts applied to the order.
+
+      - name: total_price
+        description: Final Shopify order total.
+        tests:
+          - not_null
+
+      - name: ingested_at
+        description: Timestamp when the raw order payload was loaded into BigQuery.
+        tests:
+          - not_null
+
+      - name: payload_json
+        description: Full raw Shopify order JSON payload retained for auditability.
+
+  - name: stg_shopify__order_line_items
+    description: >
+      Shopify order line-item staging model. Each row represents one line item
+      from a staged Shopify order.
+    columns:
+      - name: shop_domain
+        description: Shopify store domain the order line belongs to.
+        tests:
+          - not_null
+
+      - name: order_id
+        description: Shopify order ID associated with the line item.
+        tests:
+          - not_null
+
+      - name: order_created_at
+        description: Timestamp when the parent order was created.
+
+      - name: order_updated_at
+        description: Timestamp when the parent order was last updated.
+
+      - name: currency
+        description: Currency inherited from the parent order.
+
+      - name: order_item_id
+        description: Unique Shopify line item ID.
+        tests:
+          - not_null
+          - unique
+
+      - name: product_id
+        description: Shopify product ID associated with the line item, when available.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: variant_id
+        description: Shopify variant ID associated with the line item, when available.
+
+      - name: line_title
+        description: Product title captured on the order line.
+
+      - name: sku
+        description: SKU captured on the order line.
+
+      - name: quantity
+        description: Quantity purchased on the line item.
+        tests:
+          - not_null
+
+      - name: unit_price
+        description: Unit price captured on the line item.
+        tests:
+          - not_null
+
+      - name: line_discount
+        description: Discount amount applied to the line item.
+
+      - name: line_gross_sales
+        description: Quantity multiplied by unit price before line discount, tax, and shipping.
+
+  - name: stg_shopify__customers
+    description: >
+      Cleaned Shopify customer staging model. Each row represents the latest raw
+      version of a Shopify customer available to the current API credentials.
+      This model intentionally avoids protected customer fields unless approved
+      access is granted.
+    columns:
+      - name: shop_domain
+        description: Shopify store domain the customer belongs to.
+        tests:
+          - not_null
+
+      - name: customer_id
+        description: Unique Shopify customer ID.
+        tests:
+          - not_null
+          - unique
+
+      - name: created_at
+        description: Timestamp when the customer record was created in Shopify.
+
+      - name: ingested_at
+        description: Timestamp when the raw customer payload was loaded into BigQuery.
+        tests:
+          - not_null
+
+  - name: stg_shopify__products
+    description: >
+      Cleaned Shopify product staging model. Each row represents the latest raw
+      version of a Shopify product.
+    columns:
+      - name: shop_domain
+        description: Shopify store domain the product belongs to.
+        tests:
+          - not_null
+
+      - name: product_id
+        description: Unique Shopify product ID.
+        tests:
+          - not_null
+          - unique
+
+      - name: created_at
+        description: Timestamp when the product was created in Shopify.
+
+      - name: updated_at
+        description: Timestamp when the product was last updated in Shopify.
+
+      - name: product_title
+        description: Shopify product title.
+        tests:
+          - not_null
+
+      - name: vendor
+        description: Product vendor.
+
+      - name: product_type
+        description: Shopify product type.
+
+      - name: status
+        description: Shopify product status.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['active', 'archived', 'draft']
+              config:
+                severity: warn
+
+      - name: payload_json
+        description: Full raw Shopify product JSON payload retained for variant extraction and auditability.
+
+      - name: ingested_at
+        description: Timestamp when the raw product payload was loaded into BigQuery.
+        tests:
+          - not_null
+
+  - name: stg_shopify__product_variants
+    description: >
+      Shopify product variant staging model. Each row represents one variant
+      extracted from a staged Shopify product payload.
+    columns:
+      - name: shop_domain
+        description: Shopify store domain the product variant belongs to.
+        tests:
+          - not_null
+
+      - name: product_id
+        description: Shopify product ID associated with the variant.
+        tests:
+          - not_null
+
+      - name: variant_id
+        description: Unique Shopify product variant ID.
+        tests:
+          - not_null
+          - unique
+
+      - name: variant_title
+        description: Shopify variant title.
+
+      - name: sku
+        description: Variant SKU.
+
+      - name: price
+        description: Current variant price.
+
+      - name: position
+        description: Variant display position within the product.
+
+      - name: ingested_at
+        description: Timestamp when the raw product payload containing this variant was loaded.
+        tests:
+          - not_null
