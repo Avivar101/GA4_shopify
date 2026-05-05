@@ -1,0 +1,105 @@
+version: 2
+
+models:
+  - name: int_ga4_shopify__purchase_reconciliation
+    description: >
+      Intermediate reconciliation model comparing GA4 purchase events to
+      Shopify orders. The model uses GA4 transaction_id matched to Shopify
+      order_id and classifies each purchase as matched, missing_transaction_id,
+      not_set_transaction_id, or unmatched_transaction_id.
+    columns:
+      - name: ga4_event_key
+        description: Unique-ish GA4 purchase event key from stg_ga4__purchases.
+        tests:
+          - not_null
+          - unique
+
+      - name: ga4_event_timestamp
+        description: Timestamp when the GA4 purchase event occurred.
+        tests:
+          - not_null
+
+      - name: ga4_transaction_id
+        description: GA4 ecommerce transaction ID used to match Shopify order_id.
+
+      - name: ga4_purchase_revenue
+        description: Purchase revenue reported by GA4.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: ga4_currency
+        description: Currency reported by GA4 for the purchase event.
+
+      - name: user_pseudo_id
+        description: Anonymous GA4 user identifier associated with the purchase.
+        tests:
+          - not_null
+
+      - name: session_key
+        description: GA4 session key associated with the purchase.
+
+      - name: source
+        description: Traffic source associated with the purchase event.
+
+      - name: medium
+        description: Traffic medium associated with the purchase event.
+
+      - name: campaign
+        description: Campaign associated with the purchase event.
+
+      - name: shopify_order_id
+        description: Matched Shopify order ID, when a match is found.
+
+      - name: shopify_order_name
+        description: Merchant-facing Shopify order name, such as #1001.
+
+      - name: shopify_order_number
+        description: Numeric Shopify order number.
+
+      - name: shopify_created_at
+        description: Timestamp when the matched Shopify order was created.
+
+      - name: shopify_total_price
+        description: Total order amount from Shopify.
+
+      - name: shopify_currency
+        description: Currency from the matched Shopify order.
+
+      - name: customer_id
+        description: Shopify customer ID associated with the matched order.
+
+      - name: financial_status
+        description: Shopify financial status for the matched order.
+
+      - name: fulfillment_status
+        description: Shopify fulfillment status for the matched order.
+
+      - name: match_status
+        description: Reconciliation status explaining whether and why the GA4 purchase matched Shopify.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - matched
+                  - missing_transaction_id
+                  - not_set_transaction_id
+                  - unmatched_transaction_id
+
+      - name: match_type
+        description: Match rule used for successful matches. Currently expected to be order_id.
+        tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - order_id
+              config:
+                where: "match_type is not null"
+
+      - name: revenue_difference
+        description: Difference between GA4 purchase revenue and Shopify total price.
+
+      - name: same_currency
+        description: Boolean flag showing whether GA4 and Shopify currencies match.

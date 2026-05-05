@@ -1,5 +1,3 @@
-{{ config(static_analysis='off') }}
-
 with events as (
     select
         concat(
@@ -20,6 +18,7 @@ with events as (
 
         nullif(trim(ecommerce.transaction_id), '') as transaction_id,
         ecommerce.purchase_revenue,
+        items,
 
         _table_suffix as source_table_suffix
 

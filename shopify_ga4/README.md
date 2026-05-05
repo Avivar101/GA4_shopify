@@ -23,6 +23,7 @@ shopify_ga4/
 |       |-- ga4/
 |       |   |-- _ga4__models.yml
 |       |   |-- stg_ga4__events.sql
+|       |   |-- stg_ga4__items.sql
 |       |   |-- stg_ga4__sessions.sql
 |       |   `-- stg_ga4__purchases.sql
 |       `-- shopify/
@@ -80,6 +81,7 @@ This model extracts important fields from nested GA4 data:
 - `currency`
 - `transaction_id`
 - `purchase_revenue`
+- `items`
 - `source_table_suffix`
 
 This is the foundation for sessions, funnel analysis, and purchase reconciliation.
@@ -120,6 +122,45 @@ Important fields:
 - `source`
 - `medium`
 - `campaign`
+
+#### `stg_ga4__items`
+
+One row per item inside a GA4 ecommerce event.
+
+This model unnests the GA4 `items` array and keeps item-level values such as:
+
+- `event_key`
+- `event_name`
+- `transaction_id`
+- `item_index`
+- `item_id`
+- `item_name`
+- `item_brand`
+- `item_variant`
+- `item_category`
+- `price`
+- `quantity`
+- `item_revenue`
+
+Use this model for product-level funnel analysis, such as products viewed, added to cart, checked out, and purchased.
+
+Do not use this model as the first purchase-to-order reconciliation grain, because one purchase can contain multiple items.
+
+## Reconciliation Grain
+
+The first GA4-to-Shopify reconciliation should compare:
+
+```text
+stg_ga4__purchases -> stg_shopify__orders
+```
+
+This is purchase-to-order grain.
+
+Use `stg_ga4__items` later for product-level reconciliation against Shopify order line items:
+
+```text
+stg_ga4__items -> stg_shopify__order_line_items
+```
 
 ### Shopify
 

@@ -1,5 +1,3 @@
-{{ config(static_analysis='off') }}
-
 select
     parse_date('%Y%m%d', event_date) as event_date,
     timestamp_micros(event_timestamp) as event_timestamp,

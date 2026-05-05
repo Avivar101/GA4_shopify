@@ -65,6 +65,9 @@ models:
       - name: purchase_revenue
         description: Purchase revenue from the GA4 ecommerce record.
 
+      - name: items
+        description: Nested GA4 ecommerce items array retained for item-level staging.
+
       - name: source_table_suffix
         description: Date suffix of the GA4 daily export table used as the source.
         tests:
@@ -195,3 +198,101 @@ models:
 
       - name: campaign
         description: Campaign associated with the purchase event.
+
+  - name: stg_ga4__items
+    description: >
+      Item-level GA4 ecommerce staging model. Each row represents one item
+      nested inside a GA4 ecommerce event such as view_item, add_to_cart,
+      begin_checkout, or purchase.
+    columns:
+      - name: event_key
+        description: Event key inherited from stg_ga4__events.
+        tests:
+          - not_null
+
+      - name: event_date
+        description: Calendar date of the ecommerce item event.
+        tests:
+          - not_null
+
+      - name: event_timestamp
+        description: Timestamp of the ecommerce item event.
+        tests:
+          - not_null
+
+      - name: event_name
+        description: GA4 ecommerce event name associated with the item.
+        tests:
+          - not_null
+
+      - name: user_pseudo_id
+        description: Anonymous GA4 user identifier associated with the item event.
+        tests:
+          - not_null
+
+      - name: session_key
+        description: Session key associated with the item event.
+
+      - name: ga_session_id
+        description: GA4 session identifier associated with the item event.
+
+      - name: transaction_id
+        description: Transaction identifier, usually populated for purchase item rows.
+
+      - name: currency
+        description: Currency associated with the item event, when available.
+
+      - name: item_index
+        description: One-based position of the item inside the GA4 items array.
+        tests:
+          - not_null
+
+      - name: item_id
+        description: GA4 item identifier. This should ideally map to a Shopify product or variant identifier.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: item_name
+        description: GA4 item name.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: item_brand
+        description: GA4 item brand.
+
+      - name: item_variant
+        description: GA4 item variant.
+
+      - name: item_category
+        description: Primary GA4 item category.
+
+      - name: item_category2
+        description: Secondary GA4 item category.
+
+      - name: item_category3
+        description: Third GA4 item category.
+
+      - name: item_category4
+        description: Fourth GA4 item category.
+
+      - name: item_category5
+        description: Fifth GA4 item category.
+
+      - name: price
+        description: Item price reported by GA4.
+
+      - name: quantity
+        description: Item quantity reported by GA4.
+
+      - name: item_revenue
+        description: Item revenue reported by GA4, usually populated for purchase events.
+
+      - name: coupon
+        description: Coupon associated with the item, when available.
+
+      - name: affiliation
+        description: Affiliation associated with the item, when available.
