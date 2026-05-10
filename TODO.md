@@ -1,21 +1,21 @@
 # Project Milestones and TODO
 
-Project: Shopify + GA4: Full-Funnel Growth & Profitability Engine
+Project: Shopify + GA4: Full-Funnel Growth & Revenue Attribution Engine
 
-This file tracks what has been achieved and what to work on next. The goal is to keep the project moving in small, understandable steps.
+This file tracks what has been achieved and what remains before closing this learning project. The goal is to digest the modeling work, validate the core outputs, and carry the lessons into a future project.
 
 ## Achieved So Far
 
 ### 1. Project Direction Clarified
 
-- Reframed the project as a full-funnel growth and profitability analytics system.
+- Reframed the project as a full-funnel growth and revenue attribution analytics system.
 - Defined the main analytics path:
 
 ```text
-traffic -> behavior -> conversion -> revenue -> profit -> lifetime value
+traffic -> behavior -> conversion -> revenue -> attribution
 ```
 
-- Clarified the core business goal: understand user behavior, conversion, revenue, profitability, CAC, and LTV.
+- Clarified the core business goal: understand user behavior, conversion, Shopify revenue truth, purchase reconciliation, and channel attribution.
 
 ### 2. Shopify Ingestion Built
 
@@ -81,7 +81,61 @@ traffic -> behavior -> conversion -> revenue -> profit -> lifetime value
 - Learned the difference between `JSON_VALUE` and `JSON_QUERY`.
 - Fixed Shopify JSON parsing issues in staging models.
 - Learned that Shopify customer PII fields may require protected customer data approval.
-- Confirmed that `customer_id` is enough to start LTV modeling.
+- Confirmed that `customer_id` is enough for future customer-level modeling without needing protected customer PII.
+
+### 8. Purchase Reconciliation Built
+
+- Built `int_ga4_shopify__purchase_reconciliation`.
+- Confirmed the primary match rule:
+
+```text
+GA4 transaction_id = Shopify order_id
+```
+
+- Preserved GA4 purchase events as the reconciliation grain.
+- Classified matched and unmatched GA4 purchases.
+- Identified useful tracking-quality gaps:
+  - missing transaction IDs
+  - `not_set` transaction IDs
+  - possible revenue differences between GA4 and Shopify
+
+### 9. Full-Funnel Mart Built
+
+- Built `fct__funnel`.
+- Grain:
+
+```text
+event_date + source + medium + campaign
+```
+
+- Modeled session-based funnel metrics from GA4 behavior.
+- Joined matched Shopify order revenue through reconciliation.
+- Added tests for grain, non-negative metrics, and rates.
+- Kept step rates over 1 as a tracking-quality warning rather than a hard failure.
+
+### 10. Revenue Mart Built
+
+- Built `fct__orders`.
+- Built `fct__order_lines`.
+- Kept Shopify as the source of truth for order and line-item revenue.
+- Used incremental logic for order and order-line facts.
+- Added an analysis scratchpad for inspecting `fct__orders` without previewing inside incremental CTE logic.
+
+### 11. Purchase-Session Attribution Built
+
+- Built `int_ga4_shopify__order_attribution`.
+- Built `fct__attributed_orders`.
+- Built `fct__channel_revenue`.
+- Current attribution rule:
+
+```text
+Attribute each Shopify order to the source / medium / campaign of the matched GA4 purchase session.
+```
+
+- Preserved all Shopify orders in attribution outputs.
+- Kept unmatched orders in an `unattributed` bucket so revenue totals can still tie back to Shopify.
+- Deduped matched GA4 purchases inside the attribution layer to preserve one row per Shopify order.
+- Added docs and tests for attribution grain and channel revenue grain.
 
 ## Current Validation Status
 
@@ -89,129 +143,127 @@ traffic -> behavior -> conversion -> revenue -> profit -> lifetime value
 - Shopify staging tests pass.
 - GA4 staging models build successfully.
 - GA4 staging tests mostly pass, with useful warnings to investigate.
+- Purchase reconciliation model builds successfully.
+- Funnel mart builds successfully.
+- Revenue marts build successfully.
+- Attribution models build successfully.
+- Focused attribution tests pass:
+
+```text
+26 passed
+```
 
 Known GA4 learning signals:
 
 - Some GA4 event keys may not be perfectly unique.
 - Some GA4 purchase events may have missing purchase revenue.
+- Some Shopify orders may be unattributed because GA4 purchase tracking is missing, duplicated, or has unusable transaction IDs.
 
-## Next Milestone: Reconciliation
+## Next Milestone: Digest, Validate, and Close
 
-The next major milestone is to compare GA4 purchases against Shopify orders.
+The next milestone is not to add more modeling scope. This project has reached its intended learning boundary.
+
+The focus now is to review what has been built, validate the model outputs, and document the lessons clearly before starting a new project.
 
 Goal:
 
 ```text
-Do GA4 purchase events match real Shopify orders?
+raw data -> staging -> reconciliation -> funnel -> revenue -> attribution
 ```
 
 Why this matters:
 
-- Shopify is the source of truth for orders and revenue.
-- GA4 is the source of truth for behavior and attribution.
-- Before building funnel, CAC, or LTV analysis, the purchase bridge must be trusted.
+- The project already covers the core Shopify + GA4 analytics bridge.
+- Adding profitability, CAC, or LTV now would increase scope before the current work is fully digested.
+- The current project is strong enough to serve as a portfolio-quality foundation for a future, more advanced analytics project.
 
-### TODO: Build Reconciliation Model
+### TODO: Final Review
 
-Create an intermediate model:
+- Review each model and write down:
+  - grain
+  - source tables
+  - business purpose
+  - important assumptions
+  - known data-quality signals
 
-```text
-shopify_ga4/models/intermediate/int_ga4_shopify__purchase_reconciliation.sql
-```
+- Compare high-level totals:
+  - Shopify staging orders vs `fct__orders`
+  - `fct__orders` revenue vs `fct__attributed_orders` revenue
+  - `fct__attributed_orders` revenue vs `fct__channel_revenue` revenue
 
-Compare:
+- Review attribution coverage:
+  - attributed orders
+  - unattributed orders
+  - attributed revenue
+  - unattributed revenue
+  - attribution coverage rates
 
-- GA4 `transaction_id`
-- Shopify `order_id`
-- Shopify `order_number`
-- Shopify `order_name`
-- GA4 purchase revenue
-- Shopify total price
-- purchase timestamps
+- Update README files with the final project scope and current model list.
+- Keep profitability, CAC, and LTV as future-project ideas rather than TODOs for this repository.
 
 Questions to answer:
 
-- Does GA4 `transaction_id` match Shopify `order_id`?
-- Does it match Shopify `order_number`?
-- Does it match Shopify `order_name`?
-- Are any GA4 purchases missing in Shopify?
-- Are any Shopify orders missing in GA4?
-- How different are GA4 purchase revenue and Shopify total price?
+- Can you explain why Shopify is the revenue source of truth?
+- Can you explain why GA4 is used for behavior and attribution?
+- Can you explain why reconciliation stays event-grain while attribution becomes order-grain?
+- Can you explain why unattributed revenue is kept instead of filtered out?
+- Can you explain the difference between purchase-session attribution and full customer journey attribution?
 
 ## Upcoming Milestones
 
-### Milestone 1: Purchase Reconciliation
+### Milestone 1: Final Documentation
 
-- Build GA4 vs Shopify purchase reconciliation.
-- Identify the correct transaction join key.
-- Add reconciliation tests.
-- Document known tracking gaps.
+- Update the main README with the completed project scope.
+- Update the dbt README with final model layers.
+- Add a short learning summary:
+  - Shopify ingestion
+  - GA4 event modeling
+  - reconciliation
+  - funnel modeling
+  - revenue modeling
+  - attribution modeling
 
-### Milestone 2: Full-Funnel Mart
+### Milestone 2: Final Validation
 
-- Build a funnel model from GA4 sessions/events.
-- Track:
-  - sessions
-  - product views
-  - add to carts
-  - checkouts
-  - purchases
-  - conversion rate
-  - revenue per session
+- Run the main dbt build/test commands.
+- Record remaining warnings and explain which are expected data-quality signals.
+- Add any final singular tests needed for revenue completeness or attribution coverage.
 
-### Milestone 3: Revenue Mart
+### Milestone 3: Project Wrap-Up
 
-- Build order and line-item revenue facts from Shopify.
-- Track:
-  - gross sales
-  - discounts
-  - taxes
-  - total revenue
-  - line item revenue
+- Freeze the current scope.
+- Note what would be done differently in a production version.
+- List future project ideas separately from current project TODOs.
 
-### Milestone 4: Profitability Inputs
+## Out of Scope for This Project
 
-- Add or ingest cost data.
-- Decide how to represent:
-  - product cost
-  - shipping cost
-  - transaction fees
-  - refunds
-  - discounts
+These are intentionally skipped for this project and can become part of a future project:
 
-### Milestone 5: Profitability Mart
+- Profitability inputs
+- Profitability marts
+- Attributed profitability
+- Customer LTV
+- CAC vs LTV
+- Embedded Shopify app
 
-- Calculate order-level profit.
-- Calculate product-level profit.
-- Calculate customer-level profit.
-- Calculate channel/campaign profitability once attribution is available.
+## Completed Milestones
 
-### Milestone 6: CAC vs LTV
-
-- Add acquisition cost data.
-- Build customer LTV.
-- Compare CAC to:
-  - first order value
-  - lifetime revenue
-  - lifetime gross profit
-- Calculate LTV:CAC ratio and payback period.
-
-### Milestone 7: Embedded Shopify App
-
-- Design merchant-facing dashboard views.
-- Start with:
-  - funnel overview
-  - revenue overview
-  - profitability overview
-  - CAC vs LTV overview
-  - data freshness status
+- Shopify ingestion
+- GA4 raw data understanding
+- dbt project setup
+- Shopify staging
+- GA4 staging
+- Purchase reconciliation
+- Full-funnel mart
+- Revenue mart
+- Purchase-session attribution
 
 ## Guiding Principle
 
 Move in this order:
 
 ```text
-understand raw data -> stage clean data -> reconcile truth -> build marts -> dashboard
+understand raw data -> stage clean data -> reconcile truth -> build marts -> explain the model
 ```
 
-Do not rush into dashboards before the staging and reconciliation layers are trustworthy.
+Do not keep expanding scope before the current model layers are understood deeply enough to explain and defend.

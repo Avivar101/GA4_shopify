@@ -1,14 +1,14 @@
 # Shopify GA4 dbt Project
 
-This dbt project transforms raw Shopify and GA4 data into clean staging models for full-funnel growth, revenue, and profitability analysis.
+This dbt project transforms raw Shopify and GA4 data into clean staging, reconciliation, funnel, revenue, and attribution models.
 
 The wider project goal is:
 
 ```text
-traffic -> behavior -> conversion -> revenue -> profit -> lifetime value
+traffic -> behavior -> conversion -> revenue -> attribution
 ```
 
-This dbt layer is where raw source data becomes documented, tested, analytics-ready data.
+This dbt layer is where raw source data becomes documented, tested, analytics-ready data for Metabase dashboards and Dagster-orchestrated runs. Profitability, CAC, and LTV are intentionally out of scope for this project.
 
 ## Project Structure
 
@@ -18,7 +18,7 @@ shopify_ga4/
 |-- profiles.yml
 |-- packages.yml
 |-- models/
-|   `-- staging/
+|   |-- staging/
 |       |-- __sources.yml
 |       |-- ga4/
 |       |   |-- _ga4__models.yml
@@ -33,8 +33,21 @@ shopify_ga4/
 |           |-- stg_shopify__customers.sql
 |           |-- stg_shopify__products.sql
 |           `-- stg_shopify__product_variants.sql
+|   |-- intermediate/
+|   |   |-- _intermediate__models.yml
+|   |   |-- int_ga4_shopify__purchase_reconciliation.sql
+|   |   `-- int_ga4_shopify__order_attribution.sql
+|   `-- marts/
+|       |-- fct__orders.sql
+|       |-- fct__order_lines.sql
+|       `-- growth/
+|           |-- _growth__models.yml
+|           |-- fct__funnel.sql
+|           |-- fct__attributed_orders.sql
+|           `-- fct__channel_revenue.sql
 |-- analyses/
-|   `-- ga4_profile_events.sql
+|   |-- ga4_profile_events.sql
+|   `-- fct_orders_profile.sql
 `-- tests/
     |-- ga4_purchases_have_transaction_id.sql
     |-- shopify_order_totals_are_non_negative.sql
@@ -196,7 +209,7 @@ This model unnests `line_items` from the raw Shopify order payload and extracts:
 - line discount
 - line gross sales
 
-This model is the foundation for product revenue and product profitability.
+This model is the foundation for product revenue analysis.
 
 #### `stg_shopify__customers`
 
@@ -236,6 +249,66 @@ This model unnests product variants and extracts:
 - price
 - display position
 
+## Intermediate Models
+
+### `int_ga4_shopify__purchase_reconciliation`
+
+Grain: one row per GA4 purchase event.
+
+This model compares GA4 purchase events to Shopify orders. The current confirmed match rule is:
+
+```text
+GA4 transaction_id = Shopify order_id
+```
+
+It keeps matched and unmatched GA4 purchases so tracking gaps stay visible.
+
+### `int_ga4_shopify__order_attribution`
+
+Grain: one row per Shopify order.
+
+This model preserves all Shopify orders and attaches one deduped matched GA4 purchase-session attribution record when available.
+
+Current attribution rule:
+
+```text
+Attribute each Shopify order to the source / medium / campaign of the matched GA4 purchase session.
+```
+
+Unmatched Shopify orders are kept as unattributed rather than filtered out.
+
+## Mart Models
+
+### `fct__orders`
+
+Grain: one row per Shopify order.
+
+Shopify-truth order revenue fact table used for revenue reporting.
+
+### `fct__order_lines`
+
+Grain: one row per Shopify order line item.
+
+Shopify-truth line-item revenue fact table used for product and item-level revenue analysis.
+
+### `fct__funnel`
+
+Grain: one row per event date, source, medium, and campaign.
+
+Session-based GA4 funnel mart with matched Shopify revenue from reconciliation.
+
+### `fct__attributed_orders`
+
+Grain: one row per Shopify order.
+
+Reporting-ready order fact table with Shopify revenue truth and purchase-session attribution fields.
+
+### `fct__channel_revenue`
+
+Grain: one row per revenue date, currency, attributed source, attributed medium, and attributed campaign.
+
+Aggregated channel revenue mart for Metabase dashboards. Revenue remains Shopify-truth; GA4 provides attribution dimensions.
+
 ## Tests
 
 Model and column tests are defined in:
@@ -243,6 +316,8 @@ Model and column tests are defined in:
 ```text
 models/staging/ga4/_ga4__models.yml
 models/staging/shopify/_shopify__models.yml
+models/intermediate/_intermediate__models.yml
+models/marts/growth/_growth__models.yml
 ```
 
 Custom data tests are defined in:
@@ -305,6 +380,18 @@ Run only GA4 staging tests:
 dbt test --select path:models/staging/ga4
 ```
 
+Build the completed attribution chain:
+
+```powershell
+dbt run --select int_ga4_shopify__order_attribution+
+```
+
+Test the attribution and channel revenue models:
+
+```powershell
+dbt test --select int_ga4_shopify__order_attribution fct__attributed_orders fct__channel_revenue
+```
+
 Generate dbt documentation:
 
 ```powershell
@@ -325,6 +412,9 @@ Latest known validation:
 - Shopify staging models build successfully.
 - Shopify staging tests pass.
 - GA4 staging tests pass with known warnings for learning/data-quality investigation.
+- Purchase reconciliation model builds successfully.
+- Funnel, revenue, and attribution marts build successfully.
+- Focused attribution tests pass.
 
 ## Learning Notes
 
@@ -349,16 +439,24 @@ This distinction matters because staging models should convert raw JSON into typ
 
 ### Customer Data
 
-The project can support LTV analysis with `customer_id`, orders, and revenue history. Email and name are not required for the first version of LTV.
+The project can support customer-level analysis with `customer_id`, orders, and revenue history. Email and name are not required for the current revenue-attribution scope.
 
 Request protected Shopify customer data only when there is a clear need for personally identifiable fields such as email, name, phone, or address.
 
 ## Next Steps
 
-Recommended next modeling steps:
+Recommended next project steps:
 
-1. Create a reconciliation model comparing GA4 purchases to Shopify orders.
-2. Build a first full-funnel mart from GA4 sessions and purchases.
-3. Build an order revenue mart from Shopify orders and line items.
-4. Add profitability inputs such as product cost, shipping cost, refunds, and payment fees.
-5. Build the first CAC vs LTV model once acquisition cost data is available.
+1. Review and digest the completed dbt models.
+2. Build Metabase dashboards on top of the marts:
+   - `fct__funnel`
+   - `fct__orders`
+   - `fct__order_lines`
+   - `fct__attributed_orders`
+   - `fct__channel_revenue`
+3. Add Dagster orchestration for:
+   - Shopify ingestion
+   - dbt runs
+   - dbt tests
+   - freshness checks
+4. Keep profitability, CAC, and LTV as future-project ideas rather than current project TODOs.

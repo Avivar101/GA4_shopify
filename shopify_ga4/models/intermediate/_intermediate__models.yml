@@ -3,6 +3,7 @@ version: 2
 models:
   - name: int_ga4_shopify__purchase_reconciliation
     description: >
+      Grain: one row per GA4 purchase event.
       Intermediate reconciliation model comparing GA4 purchase events to
       Shopify orders. The model uses GA4 transaction_id matched to Shopify
       order_id and classifies each purchase as matched, missing_transaction_id,
@@ -106,6 +107,7 @@ models:
 
   - name: int_ga4_shopify__order_attribution
     description: >
+      Grain: one row per Shopify order.
       Order-grain attribution model that preserves all Shopify orders and
       attaches one deduped matched GA4 purchase-session attribution record
       when available. The current attribution rule is purchase_session.

@@ -1,18 +1,18 @@
-# Shopify + GA4: Full-Funnel Growth & Profitability Engine
+# Shopify + GA4: Full-Funnel Growth & Revenue Attribution Engine
 
 This project combines Shopify commerce data with GA4 behavioral data to analyze the full customer journey:
 
 ```text
-traffic -> behavior -> conversion -> revenue -> profit -> lifetime value
+traffic -> behavior -> conversion -> revenue -> attribution
 ```
 
-The goal is to build an analytics system that helps a merchant understand not only what users do before they buy, but also whether those users, products, and acquisition channels are profitable over time.
+The goal is to build an analytics system that helps a merchant understand what users do before they buy, whether GA4 purchase tracking reconciles to Shopify order truth, and which channels/campaigns are associated with real Shopify revenue.
 
-This is also a learning project. The focus is not only to produce dashboards, but to understand how raw ecommerce and behavioral data becomes trustworthy analytics.
+This is also a learning project. The focus is not only to produce dashboards, but to understand how raw ecommerce and behavioral data becomes trustworthy analytics. Profitability, CAC, and LTV are intentionally out of scope for this project and can be explored in a future project.
 
 ## Objective
 
-The objective of this project is to build a system that allows end-users to track Shopify store profitability and perform full-funnel, attribution, CAC, and LTV analysis using Shopify and GA4 data.
+The objective of this project is to build a system that allows end-users to analyze Shopify revenue, GA4 behavior, purchase reconciliation, full-funnel performance, and purchase-session attribution using Shopify and GA4 data.
 
 ## Core Objectives
 
@@ -20,9 +20,10 @@ Provide visibility into:
 
 - Full-funnel user behavior from GA4.
 - Shopify conversion and revenue performance.
-- Product, order, and customer profitability.
-- CAC vs LTV by channel, campaign, cohort, and customer segment.
 - Gaps between GA4 purchase tracking and Shopify order reality.
+- Revenue attribution by source, medium, and campaign.
+- Dashboard-ready marts for Metabase.
+- Scheduled ingestion and transformation through Dagster orchestration.
 
 ## Business Questions
 
@@ -30,12 +31,10 @@ The system should help answer:
 
 - Which channels and campaigns bring users who actually convert?
 - Where do users drop off before purchase?
-- Which products drive revenue, margin, and repeat purchases?
-- How much does it cost to acquire a customer?
-- How much is a customer worth over time?
-- Is CAC lower than LTV for each channel or campaign?
-- Which cohorts become profitable fastest?
+- Which channels and campaigns are associated with Shopify revenue?
 - Do GA4 purchase events match Shopify orders?
+- How much revenue is attributed vs unattributed?
+- Are the dbt marts reliable enough for a BI dashboard?
 
 ## Current Data Understanding
 
@@ -106,7 +105,7 @@ Ingest data from:
   - Orders
   - Products
   - Customers
-  - Future: refunds, transactions, fulfillments, inventory, product costs
+  - Future project ideas: refunds, transactions, fulfillments, inventory, product costs
 - GA4 BigQuery export
   - Daily event tables
   - Event parameters
@@ -134,11 +133,13 @@ Suggested models:
 - `stg_shopify__customers`
 - `stg_shopify__products`
 - `int_order_attribution`
-- `fct_funnel`
-- `fct_orders`
-- `fct_profitability`
-- `fct_customer_ltv`
-- `fct_cac_vs_ltv`
+- `int_ga4_shopify__purchase_reconciliation`
+- `int_ga4_shopify__order_attribution`
+- `fct__funnel`
+- `fct__orders`
+- `fct__order_lines`
+- `fct__attributed_orders`
+- `fct__channel_revenue`
 
 ### Data Processing
 
@@ -152,7 +153,6 @@ Processing should handle:
 - Incremental updates.
 - Late-arriving GA4 data.
 - Refunds and cancellations.
-- Revenue and margin calculations.
 - Identity matching between GA4 users, sessions, and Shopify orders.
 
 ### Analytics
@@ -164,34 +164,33 @@ The analytics layer should support:
 - Revenue reporting.
 - Product performance.
 - Campaign attribution.
-- CAC vs LTV analysis.
-- Cohort analysis.
-- Profitability and gross margin reporting.
 - GA4 vs Shopify purchase reconciliation.
+- Attribution coverage reporting.
 
-### Shopify App Embedding
+### Metabase Dashboards
 
-The analytics experience should eventually be embedded into a Shopify app.
+The analytics experience for this project will be delivered through Metabase dashboards on top of dbt marts.
 
-The embedded app should provide:
+Dashboard views should include:
 
 - Funnel dashboard.
-- Revenue and profit dashboard.
-- CAC vs LTV dashboard.
-- Product performance dashboard.
-- Customer cohort views.
+- Revenue dashboard.
+- Attribution dashboard.
+- Channel revenue dashboard.
+- GA4 vs Shopify reconciliation dashboard.
 - Data freshness and pipeline status.
 
-### Orchestration
+### Dagster Orchestration
 
-Pipelines should be scheduled and monitored.
+Pipelines should be scheduled and monitored with Dagster.
 
 Recommended orchestration responsibilities:
 
 - Run Shopify ingestion.
 - Validate GA4 export freshness.
 - Run dbt staging models.
-- Run dbt marts.
+- Run dbt intermediate models and marts.
+- Run dbt tests.
 - Track pipeline state.
 - Log row counts and failures.
 - Alert on missing or stale data.
@@ -237,8 +236,9 @@ Recommended orchestration responsibilities:
 |   |-- profiles.yml
 |   |-- packages.yml
 |   `-- models/
-|       `-- staging/
-|           `-- __sources.yml
+|       |-- staging/
+|       |-- intermediate/
+|       `-- marts/
 |-- main.py
 |-- pyproject.toml
 |-- uv.lock
@@ -327,7 +327,7 @@ Compare:
 - GA4 purchase revenue vs Shopify order revenue.
 - GA4 `transaction_id` vs Shopify order identifiers.
 
-This step is important before attribution, CAC, or LTV.
+This step is important before attribution and dashboard reporting.
 
 ### Step 5: Build Full-Funnel Model
 
@@ -347,39 +347,40 @@ Key metrics:
 - Conversion rate
 - Revenue per session
 
-### Step 6: Build Profitability Model
+### Step 6: Build Revenue Marts
 
-Start with order-level profitability:
+Create Shopify-truth order and line-item facts:
 
-```text
-net revenue - product cost - shipping cost - payment fees - refunds = gross profit
-```
+- `fct__orders`: one row per Shopify order.
+- `fct__order_lines`: one row per Shopify order line item.
 
-Then expand to:
+### Step 7: Build Attribution Models
 
-- Product profitability.
-- Customer profitability.
-- Channel profitability.
-- Campaign profitability.
+Attach GA4 purchase-session context to Shopify orders:
 
-### Step 7: Build CAC vs LTV Model
+- `int_ga4_shopify__order_attribution`: one row per Shopify order.
+- `fct__attributed_orders`: reporting-ready attributed order fact.
+- `fct__channel_revenue`: daily revenue by attributed source, medium, and campaign.
 
-CAC requires acquisition cost data. This may come later from ad platforms or manual uploads.
+### Step 8: Build Metabase Dashboards
 
-Start with:
+Create dashboards for the completed marts:
 
-- Customer first order date.
-- Customer total revenue.
-- Customer total gross profit.
-- Customer repeat purchases.
-- Customer lifetime value.
+- Funnel performance.
+- Revenue performance.
+- Channel attribution.
+- Attribution coverage.
+- Reconciliation quality.
 
-Then compare LTV against CAC by:
+### Step 9: Add Dagster Orchestration
 
-- Channel.
-- Campaign.
-- Cohort.
-- Customer segment.
+Use Dagster to orchestrate:
+
+- Shopify ingestion.
+- dbt model runs.
+- dbt tests.
+- freshness checks.
+- basic monitoring/logging.
 
 ## Suggested Analytics Marts
 
@@ -397,35 +398,42 @@ Key metrics:
 - Conversion rate
 - Revenue per session
 
-### Profitability Mart
+### Revenue Mart
 
-Tracks profit by order, product, customer, channel, and campaign.
+Tracks Shopify order and line-item revenue.
 
 Key metrics:
 
-- Gross sales
+- Orders
+- Order lines
+- Gross line sales
 - Discounts
-- Refunds
-- Net revenue
-- Product cost
-- Shipping cost
-- Payment fees
-- Gross profit
-- Gross margin
+- Taxes
+- Total revenue
 
-### CAC vs LTV Mart
+### Attribution Mart
 
-Compares acquisition cost against customer value.
+Tracks Shopify revenue with GA4 purchase-session attribution.
 
 Key metrics:
 
-- CAC
-- First purchase revenue
-- Customer lifetime revenue
-- Customer lifetime gross profit
-- Payback period
-- LTV:CAC ratio
+- Attributed orders
+- Unattributed orders
+- Attributed revenue
+- Unattributed revenue
+- Attribution coverage rate
+- Revenue by source / medium / campaign
+
+### Out of Scope for This Project
+
+The following are intentionally skipped here and reserved for a future project:
+
+- Profitability inputs
+- Profitability marts
+- Customer LTV
+- CAC vs LTV
+- Embedded Shopify app
 
 ## Notes
 
-The project should move in small, understandable steps. First understand the raw GA4 event structure, then build staging models, then join GA4 behavior to Shopify orders, then layer profitability and CAC vs LTV on top.
+The project should move in small, understandable steps. First understand the raw GA4 event structure, then build staging models, then reconcile GA4 purchases to Shopify orders, then build revenue and attribution marts, then expose the marts through Metabase and orchestrate the pipeline with Dagster.

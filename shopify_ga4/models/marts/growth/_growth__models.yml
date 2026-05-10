@@ -3,6 +3,7 @@ version: 2
 models:
   - name: fct__funnel
     description: >
+      Grain: one row per event_date, source, medium, and campaign.
       Daily growth funnel mart by source, medium, and campaign. This model
       summarizes GA4 session behavior and joins matched Shopify order revenue
       from the purchase reconciliation model.
@@ -76,6 +77,7 @@ models:
 
   - name: fct__attributed_orders
     description: >
+      Grain: one row per Shopify order.
       Reporting-ready order fact table with Shopify revenue truth and
       purchase-session attribution fields from matched GA4 purchases.
     columns:
@@ -120,6 +122,8 @@ models:
 
   - name: fct__channel_revenue
     description: >
+      Grain: one row per revenue_date, currency, attributed_source,
+      attributed_medium, and attributed_campaign.
       Daily attributed revenue mart grouped by Shopify order date, currency,
       attributed source, medium, and campaign. Revenue remains Shopify-truth;
       GA4 provides the attribution dimensions.
