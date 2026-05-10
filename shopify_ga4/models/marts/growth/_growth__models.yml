@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: fct_funnel
+  - name: fct__funnel
     description: >
       Daily growth funnel mart by source, medium, and campaign. This model
       summarizes GA4 session behavior and joins matched Shopify order revenue
@@ -73,3 +73,103 @@ models:
 
       - name: revenue_per_session
         description: Matched Shopify revenue divided by sessions.
+
+  - name: fct__attributed_orders
+    description: >
+      Reporting-ready order fact table with Shopify revenue truth and
+      purchase-session attribution fields from matched GA4 purchases.
+    columns:
+      - name: order_id
+        description: Shopify order ID. The grain is one row per Shopify order.
+        tests:
+          - not_null
+          - unique
+
+      - name: order_created_date
+        description: Shopify order created date used for revenue reporting.
+        tests:
+          - not_null
+
+      - name: ga4_purchase_date
+        description: Date of the matched GA4 purchase event, when attribution exists.
+
+      - name: total_price
+        description: Shopify order total.
+        tests:
+          - not_null
+
+      - name: is_attributed
+        description: Boolean flag for whether the order has matched GA4 attribution.
+        tests:
+          - not_null
+
+      - name: attributed_source
+        description: Source assigned under purchase-session attribution.
+        tests:
+          - not_null
+
+      - name: attributed_medium
+        description: Medium assigned under purchase-session attribution.
+        tests:
+          - not_null
+
+      - name: attributed_campaign
+        description: Campaign assigned under purchase-session attribution.
+        tests:
+          - not_null
+
+  - name: fct__channel_revenue
+    description: >
+      Daily attributed revenue mart grouped by Shopify order date, currency,
+      attributed source, medium, and campaign. Revenue remains Shopify-truth;
+      GA4 provides the attribution dimensions.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - revenue_date
+              - currency
+              - attributed_source
+              - attributed_medium
+              - attributed_campaign
+    columns:
+      - name: revenue_date
+        description: Shopify order created date used as the revenue reporting date.
+        tests:
+          - not_null
+
+      - name: currency
+        description: Shopify order currency.
+        tests:
+          - not_null
+
+      - name: attributed_source
+        description: Source assigned under purchase-session attribution.
+        tests:
+          - not_null
+
+      - name: attributed_medium
+        description: Medium assigned under purchase-session attribution.
+        tests:
+          - not_null
+
+      - name: attributed_campaign
+        description: Campaign assigned under purchase-session attribution.
+        tests:
+          - not_null
+
+      - name: orders
+        description: Number of Shopify orders in the group.
+        tests:
+          - not_null
+
+      - name: total_revenue
+        description: Shopify total order revenue in the group.
+        tests:
+          - not_null
+
+      - name: order_attribution_coverage_rate
+        description: Share of orders in the group that have GA4 attribution.
+
+      - name: revenue_attribution_coverage_rate
+        description: Share of revenue in the group that has GA4 attribution.

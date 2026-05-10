@@ -103,3 +103,57 @@ models:
 
       - name: same_currency
         description: Boolean flag showing whether GA4 and Shopify currencies match.
+
+  - name: int_ga4_shopify__order_attribution
+    description: >
+      Order-grain attribution model that preserves all Shopify orders and
+      attaches one deduped matched GA4 purchase-session attribution record
+      when available. The current attribution rule is purchase_session.
+    columns:
+      - name: order_id
+        description: Shopify order ID. This model should have one row per Shopify order.
+        tests:
+          - not_null
+          - unique
+
+      - name: order_created_date
+        description: Date when the Shopify order was created.
+        tests:
+          - not_null
+
+      - name: ga4_purchase_date
+        description: Date of the matched GA4 purchase event, when the order is attributed.
+
+      - name: total_price
+        description: Shopify order total used as the revenue source of truth.
+        tests:
+          - not_null
+
+      - name: attribution_model
+        description: Attribution rule applied to the order. Currently purchase_session.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - purchase_session
+
+      - name: is_attributed
+        description: Boolean flag indicating whether the Shopify order has matched GA4 purchase-session attribution.
+        tests:
+          - not_null
+
+      - name: attributed_source
+        description: Source assigned to the order under the attribution model, or unattributed.
+        tests:
+          - not_null
+
+      - name: attributed_medium
+        description: Medium assigned to the order under the attribution model, or unattributed.
+        tests:
+          - not_null
+
+      - name: attributed_campaign
+        description: Campaign assigned to the order under the attribution model, or unattributed.
+        tests:
+          - not_null

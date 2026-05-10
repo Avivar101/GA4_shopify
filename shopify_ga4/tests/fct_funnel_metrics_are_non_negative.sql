@@ -12,7 +12,7 @@ select
     matched_purchase_sessions,
     matched_orders,
     shopify_revenue
-from {{ ref('fct_funnel') }}
+from {{ ref('fct__funnel') }}
 where sessions < 0
     or page_view_sessions < 0
     or view_item_sessions < 0
