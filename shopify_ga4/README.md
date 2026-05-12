@@ -8,7 +8,7 @@ The wider project goal is:
 traffic -> behavior -> conversion -> revenue -> attribution
 ```
 
-This dbt layer is where raw source data becomes documented, tested, analytics-ready data for Metabase dashboards and Dagster-orchestrated runs. Profitability, CAC, and LTV are intentionally out of scope for this project.
+This dbt layer is where raw source data becomes documented, tested, analytics-ready data for the Looker Studio dashboard. Profitability, CAC, and LTV are intentionally out of scope for this project.
 
 ## Project Structure
 
@@ -307,7 +307,7 @@ Reporting-ready order fact table with Shopify revenue truth and purchase-session
 
 Grain: one row per revenue date, currency, attributed source, attributed medium, and attributed campaign.
 
-Aggregated channel revenue mart for Metabase dashboards. Revenue remains Shopify-truth; GA4 provides attribution dimensions.
+Aggregated channel revenue mart for Looker Studio dashboard reporting. Revenue remains Shopify-truth; GA4 provides attribution dimensions.
 
 ## Tests
 
@@ -392,17 +392,13 @@ Test the attribution and channel revenue models:
 dbt test --select int_ga4_shopify__order_attribution fct__attributed_orders fct__channel_revenue
 ```
 
-Generate dbt documentation:
+Generate a dbt Fusion catalog:
 
 ```powershell
-dbt docs generate
+dbt compile --write-catalog
 ```
 
-Serve dbt documentation locally:
-
-```powershell
-dbt docs serve
-```
+Note: dbt Fusion does not support `dbt docs generate`. Use `dbt compile --write-catalog` to create `catalog.json`.
 
 ## Current Validation Status
 
@@ -415,6 +411,7 @@ Latest known validation:
 - Purchase reconciliation model builds successfully.
 - Funnel, revenue, and attribution marts build successfully.
 - Focused attribution tests pass.
+- Looker Studio dashboard has been built on top of the marts.
 
 ## Learning Notes
 
@@ -443,20 +440,21 @@ The project can support customer-level analysis with `customer_id`, orders, and 
 
 Request protected Shopify customer data only when there is a clear need for personally identifiable fields such as email, name, phone, or address.
 
+## Dashboard Models
+
+The Looker Studio dashboard uses these completed models:
+
+- `fct__channel_revenue` for executive revenue and channel attribution pages.
+- `fct__funnel` for session-based funnel performance.
+- `int_ga4_shopify__purchase_reconciliation` for reconciliation and data-quality reporting.
+- `fct__attributed_orders` as the order-level drilldown behind attributed revenue.
+
 ## Next Steps
 
-Recommended next project steps:
+This dbt scope is complete for the current learning project. Good follow-up work for a future project:
 
-1. Review and digest the completed dbt models.
-2. Build Metabase dashboards on top of the marts:
-   - `fct__funnel`
-   - `fct__orders`
-   - `fct__order_lines`
-   - `fct__attributed_orders`
-   - `fct__channel_revenue`
-3. Add Dagster orchestration for:
-   - Shopify ingestion
-   - dbt runs
-   - dbt tests
-   - freshness checks
-4. Keep profitability, CAC, and LTV as future-project ideas rather than current project TODOs.
+1. Add Dagster orchestration for Shopify ingestion, dbt runs, tests, and freshness checks.
+2. Improve acquisition data quality with UTM standards and internal/test traffic exclusion.
+3. Explore first-touch and last-touch attribution.
+4. Add product-level ecommerce analysis.
+5. Keep profitability, CAC, and LTV as future-project ideas rather than current project TODOs.

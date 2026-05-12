@@ -2,7 +2,7 @@
 
 Project: Shopify + GA4: Full-Funnel Growth & Revenue Attribution Engine
 
-This file tracks what has been achieved and what remains before closing this learning project. The goal is to digest the modeling work, validate the core outputs, and carry the lessons into a future project.
+This file tracks what has been achieved and what remains before closing this learning project. The core ingestion, modeling, attribution, and dashboard work is complete.
 
 ## Achieved So Far
 
@@ -137,6 +137,17 @@ Attribute each Shopify order to the source / medium / campaign of the matched GA
 - Deduped matched GA4 purchases inside the attribution layer to preserve one row per Shopify order.
 - Added docs and tests for attribution grain and channel revenue grain.
 
+### 12. Looker Studio Dashboard Built
+
+- Built a four-page dashboard on top of the completed dbt marts:
+  - Executive Overview
+  - Funnel Performance
+  - Channel & Revenue Attribution
+  - Reconciliation & Data Quality
+- Added dashboard screenshots to the `assets/` folder.
+- Added dashboard interpretation notes in `docs/dashboard_notes.md`.
+- Documented the current test/debug data limitation so sparse channel attribution is explained clearly.
+
 ## Current Validation Status
 
 - Shopify staging models build successfully.
@@ -159,9 +170,9 @@ Known GA4 learning signals:
 - Some GA4 purchase events may have missing purchase revenue.
 - Some Shopify orders may be unattributed because GA4 purchase tracking is missing, duplicated, or has unusable transaction IDs.
 
-## Next Milestone: Digest, Validate, and Close
+## Final Milestone: Digest, Validate, and Close
 
-The next milestone is not to add more modeling scope. This project has reached its intended learning boundary.
+The remaining milestone is not to add more modeling scope. This project has reached its intended learning boundary.
 
 The focus now is to review what has been built, validate the model outputs, and document the lessons clearly before starting a new project.
 
@@ -179,27 +190,29 @@ Why this matters:
 
 ### TODO: Final Review
 
-- Review each model and write down:
+- [ ] Review each model and write down:
   - grain
   - source tables
   - business purpose
   - important assumptions
   - known data-quality signals
 
-- Compare high-level totals:
+- [ ] Compare high-level totals:
   - Shopify staging orders vs `fct__orders`
   - `fct__orders` revenue vs `fct__attributed_orders` revenue
   - `fct__attributed_orders` revenue vs `fct__channel_revenue` revenue
 
-- Review attribution coverage:
+- [ ] Review attribution coverage:
   - attributed orders
   - unattributed orders
   - attributed revenue
   - unattributed revenue
   - attribution coverage rates
 
-- Update README files with the final project scope and current model list.
-- Keep profitability, CAC, and LTV as future-project ideas rather than TODOs for this repository.
+- [x] Update README files with the final project scope and current model list.
+- [x] Add dashboard screenshots to the repository.
+- [x] Add dashboard notes and known limitations.
+- [x] Keep profitability, CAC, and LTV as future-project ideas rather than TODOs for this repository.
 
 Questions to answer:
 
@@ -209,31 +222,13 @@ Questions to answer:
 - Can you explain why unattributed revenue is kept instead of filtered out?
 - Can you explain the difference between purchase-session attribution and full customer journey attribution?
 
-## Upcoming Milestones
+## Remaining Wrap-Up
 
-### Milestone 1: Final Documentation
-
-- Update the main README with the completed project scope.
-- Update the dbt README with final model layers.
-- Add a short learning summary:
-  - Shopify ingestion
-  - GA4 event modeling
-  - reconciliation
-  - funnel modeling
-  - revenue modeling
-  - attribution modeling
-
-### Milestone 2: Final Validation
-
-- Run the main dbt build/test commands.
-- Record remaining warnings and explain which are expected data-quality signals.
-- Add any final singular tests needed for revenue completeness or attribution coverage.
-
-### Milestone 3: Project Wrap-Up
-
-- Freeze the current scope.
-- Note what would be done differently in a production version.
-- List future project ideas separately from current project TODOs.
+- [ ] Run the main dbt build/test commands.
+- [ ] Record remaining warnings and explain which are expected data-quality signals.
+- [ ] Freeze the current scope.
+- [ ] Note what would be done differently in a production version.
+- [ ] List future project ideas separately from current project TODOs.
 
 ## Out of Scope for This Project
 
@@ -257,6 +252,8 @@ These are intentionally skipped for this project and can become part of a future
 - Full-funnel mart
 - Revenue mart
 - Purchase-session attribution
+- Looker Studio dashboard
+- Dashboard screenshots and notes
 
 ## Guiding Principle
 
